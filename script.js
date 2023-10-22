@@ -37,7 +37,6 @@
 //     user_id INT REFERENCES Users(user_id),
 //     movie_id INT REFERENCES Movies(movie_id),
 //     timestamp TIMESTAMP,
-//     -- Add any other columns if needed
 // );
 
 // -- Create the Want to Watch Table

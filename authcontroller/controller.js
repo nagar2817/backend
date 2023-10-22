@@ -204,11 +204,33 @@ export const updateMovieRating = async (req, res, next) => {
   }
 };
 
+// fetch user raring from userrating table
+export const fetchUserRating = async (req, res) => {
+  try {
+    const {userId,movieId} = req.params;
+    const query = {
+      text: 'SELECT * FROM UserRatings WHERE user_id = $1 AND movie_id = $2',
+      values: [userId,movieId],
+    };
+    const result = await pool.query(query);
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
 
 const calculateUpdatedRating = (currentRating, voteCount, newRating) => {
   const totalRating = currentRating * voteCount;
   const newTotalRating = totalRating + newRating;
   const newVoteCount = voteCount + 1;
+  const updatedRating = newTotalRating / newVoteCount;
+  // console.log(updatedRating);
+  return updatedRating.toFixed(1);
+};
+const claculatedNewExistingRating = (currentRating, voteCount, newRating) => {
+  const totalRating = currentRating * voteCount;
+  const newTotalRating = totalRating + newRating;
+  const newVoteCount = voteCount;
   const updatedRating = newTotalRating / newVoteCount;
   // console.log(updatedRating);
   return updatedRating.toFixed(1);
@@ -269,6 +291,32 @@ export const updateWantToWatch = async (req, res, next) => {
   }
 };
 
+export const updateWatched = async (req, res, next) => {
+  try {
+    const { userId, movieId, action } = req.params;
+    // action 0 -> remove, 1 -> add
+
+    let query;
+    if (action == 1) {
+      query = {
+        text: 'INSERT INTO Watched (user_id, movie_id, timestamp) VALUES ($1, $2, NOW())',
+        values: [userId, movieId],
+      };
+    } else {
+      query = {
+        text: 'DELETE FROM Watched WHERE user_id = $1 AND movie_id = $2',
+        values: [userId, movieId],
+      };
+    }
+
+    await pool.query(query);
+
+    res.status(200).json({ message: 'Watched updated successfully' });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 // creat an function to insert an user. while inserting first fetch total user so that new user have id as total user length + 1
 // Create a function to insert a user and fetch the total number of users
 const createUser = async (username, email, password) => {
@@ -291,19 +339,18 @@ const createUser = async (username, email, password) => {
 // create signin function as it check email and password wiht existing users table if is correct then return user id
 // in signin function return something if user is not match
 export const signin = async (req,res)=> {
-  const {username,email, password} = req.params;
+  const {email, password} = req.params;
   try {
     const query = {
-      text: 'SELECT user_id FROM Users WHERE email = $1 AND password = $2',
+      text: 'SELECT * FROM Users WHERE email = $1 AND password = $2',
       values: [email, password],
     };
     const result = await pool.query(query);
+    // console.log(result);
     if (result.rows.length === 0) {
-      const userId = await createUser(username, email, password);
-      res.status(200).json(userId);
+      res.status(200).json(-1);
     }
-    const userId = result.rows[0].user_id;
-    res.status(200).json(userId);
+    res.status(200).json(result.rows[0].user_id);
   } catch (error) {
     console.error('Error:', error);
   }
@@ -394,6 +441,114 @@ export const fetchWantToWatchMovies = async (req,res) => {
     console.error('Error:', error);
   }
 };
+
+export const fetchMovieFromWatched = async (req, res) => {
+  const { userId, movieId } = req.params;
+  try {
+    const query = {
+      text: 'SELECT * FROM Watched WHERE user_id = $1 AND movie_id = $2',
+      values: [userId, movieId],
+    };
+    const result = await pool.query(query);
+    if (result.rows.length === 0) {
+      res.status(200).json(-1);
+    }else{
+      res.status(200).json(result.rows[0]);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+// create function to fetching fav movis of user from favouite tables
+export const fetchWatchedMovies = async (req,res) => {
+  // create subqeyr to fecth all movies having movie id correst posing to user_id in favrotir table
+  const userId = req.params.userId;
+  const subquery = `
+    SELECT movie_id
+    FROM Watched
+    WHERE user_id = ${userId}
+  `;
+
+  const query = `
+    SELECT *
+    FROM Movies
+    WHERE movie_id IN (${subquery})
+  `;
+
+  try {
+    const result = await pool.query(query);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+export const fetchAndUpdateUserRating = async (req, res) => {
+  try {
+    const { userId, movieId } = req.params;
+    const {rating} = req.body;
+    const MovieRatingFecthingQuery = {
+      text: 'SELECT * FROM Movies WHERE movie_id = $1',
+      values: [movieId],
+    }
+    const currentRatingResult = await pool.query(MovieRatingFecthingQuery);
+    const currentRating = currentRatingResult.rows[0].rating;
+    const voteCount = currentRatingResult.rows[0].vote_count;
+    const query = {
+      text: 'SELECT * FROM UserRatings WHERE user_id = $1 AND movie_id = $2',
+      values: [userId, movieId],
+    };
+    const result = await pool.query(query);
+    if (result.rows.length === 0)
+     {
+      // Insert rating if not present
+      
+      const RatingFetchQuery = {
+        text:'SELECT count(*) FROM userratings',
+      }
+      const ans = await pool.query(RatingFetchQuery);
+      const totalRatings = ans.rows[0].count;
+      const insertQuery = {
+        text: 'INSERT INTO UserRatings (rating_id,user_id, movie_id, rating) VALUES ($1, $2, $3,$4)',
+        values: [totalRatings + 1,userId, movieId, rating], // Change the default rating value as per your requirement
+      };
+      await pool.query(insertQuery);
+      const newRating = claculatedNewExistingRating(currentRating,voteCount,rating);
+      const updateQuery2 = {
+        text:"UPDATE Movies SET rating = $1,vote_count = vote_count + 1 WHERE movie_id = $2",
+        values :[newRating,movieId]
+      }
+      const result = await pool.query(updateQuery2);
+      console.log("inserted successfully in movies table and user rating table");
+      res.status(200).json(result.rows[0]); // Return the default rating value
+    } 
+    
+    else {
+
+      // Update rating if present
+      const updateQuery1 = {
+        text: 'UPDATE UserRatings SET rating = $1 WHERE user_id = $2 AND movie_id = $3',
+        values: [rating, userId, movieId],
+      };
+      const newRating = calculateUpdatedRating(currentRating,voteCount,rating);
+      const updateQuery2 = {
+        text:"UPDATE Movies SET rating = $1 WHERE movie_id = $2",
+        values :[newRating,movieId]
+      }
+      const result = await pool.query(updateQuery2);
+      await pool.query(updateQuery1);
+      console.log("updated successfully in both movies and userRating table");
+      // const rating = result.rows[0].rating;
+      res.status(200).json(result.rows[0]);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+
+
 
 
 

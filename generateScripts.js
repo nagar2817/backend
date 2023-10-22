@@ -3,9 +3,7 @@ import axios from "axios";
 
 const generateRatingData = async (userIds,MovieIds) => {
   try {
-    let ratingId =1;
-    const client = await pool.connect();
-    await client.query('BEGIN'); // Start a transaction
+    let ratingId =600;
     for (let i = 0; i < userIds.length; i++) { 
       const userId = userIds[i];
 
@@ -17,11 +15,10 @@ const generateRatingData = async (userIds,MovieIds) => {
           text: 'INSERT INTO userratings (rating_id,user_id, movie_id, rating) VALUES ($1, $2, $3,$4)',
           values: [ratingId++,userId, MovieIds[movieIdIndex], rating],
         };
-        await client.query(ratingQuery);
+        await pool.query(ratingQuery);
       }
     }
 
-    await client.query('COMMIT'); // Commit the transaction
     console.log('Data generation and insertion complete');
   } catch (error) {
     console.error('Error:', error);
@@ -32,19 +29,16 @@ const generateRatingData = async (userIds,MovieIds) => {
 
 const GenerateUsers = async (starting,number)=>{
         // generate 10000 users
-        let Users = [];
-        const client = await pool.connect();
-        await client.query('BEGIN'); // Start a transaction
+        let Users = [];// Start a transaction
         for (let i = starting; i < number; i++) {
             const userQuery = {
                 text: 'INSERT INTO users (user_id,username,email,password) VALUES ($1,$2,$3,$4) RETURNING user_id',
                 values: [i, `user_${i}`, `user${i}@gmail.com`, `user${i}@123`],
             };
-            const userResult = await client.query(userQuery);
+            const userResult = await pool.query(userQuery);
             const userId = userResult.rows[0].user_id;
             Users.push(userId);
         }
-        await client.query('COMMIT'); // Commit the transaction
         return Users;
 }
 
@@ -118,24 +112,25 @@ const movieTracker = async(l,h)=>{
   }
 }
 
-const movieTrackerResponse = await movieTracker(101,300);
+// const movieTrackerResponse = await movieTracker(101,300);
 
 // const userId = await createUser("user01", "dsds.@gamil.com", "jyWR1VZCKsZV3RgVfCuame6yTFB3");
 // console.log(userId);
 
-// const MovieIds = await getMoviesId(1000);
-// console.log(MovieIds);
+const MovieIds = await getMoviesId(5000);
+console.log(MovieIds);
+const userIds = await getUsersId(1000);
+console.log(userIds);
 
-// const UserIds = await GenerateUsers(101,200);
+// const UserIds = await GenerateUsers(10000,10100);
 // console.log(UserIds);
 
-// const userIds = await getUsersId(100);
-// console.log(userIds);
+
 
 // start from here
 // const users = await usergenerationtracker(5001,5000);
 // console.log(users);
 
-// const ans = await generateRatingData(userIds, MovieIds);
+const ans = await generateRatingData(userIds, MovieIds);
 // console.log(ans);
 // generateRandomData();
