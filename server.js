@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 8000
 
 app.use('/',router);
 
-app.listen(PORT,(req,res)=>{
+app.listen(8000,(req,res)=>{
     console.log(`Movie App is listening at ${PORT}`);
 })
 

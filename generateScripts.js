@@ -117,10 +117,10 @@ const movieTracker = async(l,h)=>{
 // const userId = await createUser("user01", "dsds.@gamil.com", "jyWR1VZCKsZV3RgVfCuame6yTFB3");
 // console.log(userId);
 
-const MovieIds = await getMoviesId(5000);
-console.log(MovieIds);
-const userIds = await getUsersId(1000);
-console.log(userIds);
+// const MovieIds = await getMoviesId(5000);
+// console.log(MovieIds);
+// const userIds = await getUsersId(1000);
+// console.log(userIds);
 
 // const UserIds = await GenerateUsers(10000,10100);
 // console.log(UserIds);
@@ -131,6 +131,6 @@ console.log(userIds);
 // const users = await usergenerationtracker(5001,5000);
 // console.log(users);
 
-const ans = await generateRatingData(userIds, MovieIds);
+// const ans = await generateRatingData(userIds, MovieIds);
 // console.log(ans);
 // generateRandomData();
