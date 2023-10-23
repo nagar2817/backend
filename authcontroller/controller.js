@@ -348,7 +348,10 @@ export const signin = async (req,res)=> {
     const result = await pool.query(query);
     // console.log(result);
     if (result.rows.length === 0) {
-      res.status(200).json(-1);
+      const username = email?.substring(0, email.indexOf("@"));
+      const userId = await createUser(username, email, password);
+      res.status(200).json(userId);
+      // res.status(200).json(-1);
     }
     res.status(200).json(result.rows[0].user_id);
   } catch (error) {
